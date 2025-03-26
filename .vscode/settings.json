@@ -1,0 +1,15 @@
+{
+    "svelte.language-server.runtime-args": [
+
+
+    ],
+    "solidity.remappingsUnix": ["@openzeppelin/=node_modules/@openzeppelin/",
+    "@chainlink/=node_modules/@chainlink/"],
+
+    "solidity-language-server.trace.server.verbosity": "message",
+    "solidity.soliumRules": {
+
+    },
+    "solidity.packageDefaultDependenciesDirectory": "node_modules",
+    "solidity.packageDefaultDependenciesContractsDirectory": "contracts"
+}
