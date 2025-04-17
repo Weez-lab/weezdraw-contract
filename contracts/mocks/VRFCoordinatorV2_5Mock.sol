@@ -126,7 +126,6 @@ contract VRFCoordinatorV2_5Mock is SubscriptionAPI, IVRFCoordinatorV2Plus {
     } else if (_words.length != req.numWords) {
       revert InvalidRandomWords();
     }
-    console.log("allgood");
     VRFConsumerBaseV2Plus v;
     bytes memory callReq = abi.encodeWithSelector(v.rawFulfillRandomWords.selector, _requestId, _words);
     s_config.reentrancyLock = true;
@@ -141,7 +140,6 @@ contract VRFCoordinatorV2_5Mock is SubscriptionAPI, IVRFCoordinatorV2Plus {
       rawPayment = (1e18 * rawPayment) / uint256(i_wei_per_unit_link);
     }
     uint96 payment = uint96(rawPayment);
-    console.log("ist it ?");
     _chargePayment(payment, nativePayment, req.subId);
 
     delete (s_requests[_requestId]);
