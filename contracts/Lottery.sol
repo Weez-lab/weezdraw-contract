@@ -115,16 +115,24 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
 
     // Request a random winner for a draw
     function requestRandomWinner(uint256 drawId, bool nativePayment) external onlyAdmin drawExists(drawId) afterEndDate(drawId)  {
+
         require(draws[drawId].participants.length > 0, "No participants in draw");
         // Request random words using the direct funding method
         bytes memory extraArgs = VRFV2PlusClient._argsToBytes(
             VRFV2PlusClient.ExtraArgsV1({nativePayment: nativePayment})
         );
+
+        uint256 estimatedCost = i_vrfV2PlusWrapper.calculateRequestPrice(
+        s_callbackGasLimit,
+        s_numWords
+        );
+     
         uint256 requestId;
         uint256 reqPrice;
 
         if (nativePayment) {
             // Pay in native tokens
+             require(address(this).balance >= estimatedCost, "Insufficient native token balance");
             (requestId, reqPrice) = requestRandomnessPayInNative(
                 s_callbackGasLimit,
                 s_requestConfirmations,
@@ -133,6 +141,7 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
             );
         } else {
             // Pay in LINK
+            require(i_linkToken.balanceOf(address(this)) >= estimatedCost, "Insufficient LINK balance");
             (requestId, reqPrice) = requestRandomness(
                 s_callbackGasLimit,
                 s_requestConfirmations,
@@ -174,7 +183,13 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
         bytes memory extraArgs = VRFV2PlusClient._argsToBytes(
             VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
         );
-
+        uint256 estimatedCost = i_vrfV2PlusWrapper.calculateRequestPrice(
+        s_callbackGasLimit,
+        s_numWords
+        );
+        // Pay in LINK
+        require(i_linkToken.balanceOf(address(this)) >= estimatedCost, "Insufficient LINK balance");
+           
         (uint256 requestId, uint256 reqPrice) = requestRandomness(
             _callbackGasLimit,
             _requestConfirmations,
