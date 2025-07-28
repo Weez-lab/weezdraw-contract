@@ -21,6 +21,7 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
         uint256 endDate;
         address[] participants;
         bool drawCompleted;
+        bool randomnessRequested;
         address winner;
     }
     uint256 private drawCounter;
@@ -97,6 +98,7 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
             endDate: _endDate,
             participants: new address[](0),
             drawCompleted: false,
+            randomnessRequested: false,
             winner: address(0)
         });
 
@@ -106,12 +108,13 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
 
     // Add a participant to a draw
     function addParticipant(uint256 drawId, address participant) external onlyAdmin drawExists(drawId) beforeEndDate(drawId) {
+        require(!draws[drawId].randomnessRequested, "Randomness already requested");
         draws[drawId].participants.push(participant);
         emit TicketAdded(drawId, participant);
     }
 
     // Request a random winner for a draw
-    function requestRandomWinner(uint256 drawId, bool nativePayment) external onlyAdmin drawExists(drawId)  {
+    function requestRandomWinner(uint256 drawId, bool nativePayment) external onlyAdmin drawExists(drawId) afterEndDate(drawId)  {
         require(draws[drawId].participants.length > 0, "No participants in draw");
         // Request random words using the direct funding method
         bytes memory extraArgs = VRFV2PlusClient._argsToBytes(
@@ -147,6 +150,7 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
         requestIdToDrawId[requestId] = drawId; // Fixing MRM
         requestIds.push(requestId);
         lastRequestId = requestId;
+        draws[drawId].randomnessRequested = true;
 
         emit RequestSent(requestId, s_numWords,reqPrice);
     
@@ -164,7 +168,7 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
         uint16 _requestConfirmations,
         uint32 _numWords,
         uint256 drawId // Add drawId as a parameter
-    ) external onlyAdmin drawExists(drawId) returns (uint256) {
+    ) external onlyAdmin drawExists(drawId) afterEndDate(drawId) returns (uint256) {
         require(!draws[drawId].drawCompleted, "Draw already completed");
         require(draws[drawId].participants.length > 0, "No participants in draw");
         bytes memory extraArgs = VRFV2PlusClient._argsToBytes(
@@ -185,6 +189,7 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
         });
          // Store the drawId associated with the requestId
         requestIdToDrawId[requestId] = drawId;
+        draws[drawId].randomnessRequested = true;
 
         requestIds.push(requestId);
         lastRequestId = requestId;
@@ -209,7 +214,6 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
         require(request.paid > 0, "request not found");
         request.fulfilled = true;
         request.randomWords = _randomWords; 
-
         emit WinnerSelected(drawId, winner);
         emit RequestFulfilled(_requestId, _randomWords, s_requests[_requestId].paid);
     }
