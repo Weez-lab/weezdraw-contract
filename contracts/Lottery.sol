@@ -103,6 +103,7 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
         
         ConfirmedOwner(msg.sender)
     {
+        require(_linkTokenAddress != address(0), "Invalid LINK token address");
         admin = msg.sender;
         drawCounter = 1; // Start draw IDs from 1
         linkTokenAddress = _linkTokenAddress; // Store LINK token address
