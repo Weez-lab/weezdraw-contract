@@ -164,7 +164,7 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
         uint16 _requestConfirmations,
         uint32 _numWords,
         uint256 drawId // Add drawId as a parameter
-    ) external onlyOwner drawExists(drawId) returns (uint256) {
+    ) external onlyAdmin drawExists(drawId) returns (uint256) {
         require(!draws[drawId].drawCompleted, "Draw already completed");
         require(draws[drawId].participants.length > 0, "No participants in draw");
         bytes memory extraArgs = VRFV2PlusClient._argsToBytes(
