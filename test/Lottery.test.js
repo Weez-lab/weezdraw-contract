@@ -172,46 +172,171 @@ const WEI_PER_UNIT_LINK = "10000000000000000" // 0.01 ether per LINK
   });
 
   it("Should select a winner after the end date", async function () {
-    const endDate = Math.floor(Date.now() / 1000) + 40; // 1 second in the future
+    const endDate = Math.floor(Date.now() / 1000) + 5; // 5 seconds ahead
     await lottery.connect(admin).createDraw(endDate);
     const drawId = await lottery.getCurrentDrawId();
+  
     await lottery.connect(admin).addParticipant(drawId, participant1.address);
     await lottery.connect(admin).addParticipant(drawId, participant2.address);
-    // Wait for the end date to pass
-    await new Promise((resolve) => setTimeout(resolve, 8000));
-    const gasLimit =  100000
-    const numWords = 1
-    // Request random winner (pay in LINK)
-    await lottery.connect(admin)
-    .requestRandomWords(gasLimit, 3, numWords, 1, {
-        gasPrice: oneHundredGwei,
-    },
-  )   
-    // Simulate the VRF callback
-    const requestId =  await lottery.lastRequestId(); // Mock request ID
-    const randomness = [123]
-    const transaction = await vrfCoordinatorMock.connect(admin).fulfillRandomWordsWithOverride(requestId, wrapper.target, randomness, {
-       gasLimit: 1_000_000,})
-
-    const transactionReceipt = await transaction.wait()
-    const events = await vrfCoordinatorMock.queryFilter("RandomWordsFulfilled", transactionReceipt.blockNumber, transactionReceipt.blockNumber);
-
-    await expect(transaction).to.emit(vrfCoordinatorMock, "RandomWordsFulfilled")
-    await expect(transaction).to.emit(lottery, "RequestFulfilled")
-
-    const subscriptionId = ethers.toBigInt(events[0].topics[1])
-    console.log(events[0])
-        
-    
-    const { paid2, fulfilled2, randomWords2 } = await lottery.getRequestStatus(
-      requestId
-  )
-  console.log(paid2,fulfilled2,randomWords2)
-
-    // Check if a winner is selected
+  
+    // Wait for the draw to expire
+    await new Promise((resolve) => setTimeout(resolve, 6000));
+  
+    // Call requestRandomWinner with nativePayment set to false (using LINK)
+    await lottery.connect(admin).requestRandomWinner(drawId, false); // false = pay in LINK
+  
+    const requestId = await lottery.lastRequestId();
+    const randomness = [123];
+  
+    const tx = await vrfCoordinatorMock.connect(admin).fulfillRandomWordsWithOverride(
+      requestId,
+      wrapper.target,
+      randomness,
+      { gasLimit: 1_000_000 }
+    );
+  
+    const receipt = await tx.wait();
+    const events = await vrfCoordinatorMock.queryFilter(
+      "RandomWordsFulfilled",
+      receipt.blockNumber,
+      receipt.blockNumber
+    );
+  
+    await expect(tx).to.emit(vrfCoordinatorMock, "RandomWordsFulfilled");
+    await expect(tx).to.emit(lottery, "RequestFulfilled");
+  
+    const { paid, fulfilled, randomWords } = await lottery.getRequestStatus(requestId);
+    expect(fulfilled).to.be.true;
+    expect(randomWords.length).to.be.greaterThan(0);
+  
     const drawDetails = await lottery.getDrawDetails(drawId);
-    console.log(drawDetails)
-   // expect(drawDetails.winner).to.be.oneOf([participant1.address, participant2.address]);
-   // expect(drawDetails.drawCompleted).to.be.true;
+    expect(drawDetails.drawCompleted).to.be.true;
+    expect([participant1.address, participant2.address]).to.include(drawDetails.winner);
   });
+  it("Should select a winner with native payment", async function () {
+    const endDate = Math.floor(Date.now() / 1000) + 5;
+    await lottery.connect(admin).createDraw(endDate);
+    const drawId = await lottery.getCurrentDrawId();
+  
+    await lottery.connect(admin).addParticipant(drawId, participant1.address);
+    await lottery.connect(admin).addParticipant(drawId, participant2.address);
+  
+    // Wait until draw expires
+    await new Promise((resolve) => setTimeout(resolve, 6000));
+  
+    const estimatedPrice = await lottery.getEstimatedRequestPrice(true); // true = native
+  
+    await lottery.connect(admin).requestRandomWinner(drawId, true, {
+      value: estimatedPrice,
+      gasLimit: 1_000_000,
+    });
+  
+    const requestId = await lottery.lastRequestId();
+    const randomness = [456];
+  
+    const tx = await vrfCoordinatorMock.connect(admin).fulfillRandomWordsWithOverride(
+      requestId,
+      wrapper.target,
+      randomness,
+      { gasLimit: 1_000_000 }
+    );
+  
+    const drawDetails = await lottery.getDrawDetails(drawId);
+    expect(drawDetails.drawCompleted).to.be.true;
+    expect([participant1.address, participant2.address]).to.include(drawDetails.winner);
+  });
+  it("Should allow admin to update callbackGasLimit", async function () {
+    await expect(lottery.connect(admin).setCallbackGasLimit(600_000))
+      .to.emit(lottery, "CallbackGasLimitUpdated")
+      .withArgs(600_000);
+    expect(await lottery.callbackGasLimit()).to.equal(600_000);
+  });
+
+  it("Should allow admin to update numWords", async function () {
+    await expect(lottery.connect(admin).setNumWords(3))
+      .to.emit(lottery, "NumWordsUpdated")
+      .withArgs(3);
+    expect(await lottery.numWords()).to.equal(3);
+  });
+
+  it("Should allow admin to update keyHash", async function () {
+    const newKeyHash = ethers.keccak256(ethers.toUtf8Bytes("new-key-hash"));
+    await expect(lottery.connect(admin).setKeyHash(newKeyHash))
+      .to.emit(lottery, "KeyHashUpdated")
+      .withArgs(newKeyHash);
+    expect(await lottery.keyHash()).to.equal(newKeyHash);
+  });
+
+  it("Should allow admin to update minConfirmations", async function () {
+    await expect(lottery.connect(admin).setMinConfirmations(5))
+      .to.emit(lottery, "MinConfirmationsUpdated")
+      .withArgs(5);
+    expect(await lottery.minConfirmations()).to.equal(5);
+  });
+
+  it("Should allow admin to update wrapper address", async function () {
+    await expect(lottery.connect(admin).setWrapperAddress(mockVRFWrapper.target))
+      .to.emit(lottery, "WrapperAddressUpdated")
+      .withArgs(mockVRFWrapper.target);
+    expect(await lottery.i_vrfV2PlusWrapper()).to.equal(mockVRFWrapper.target);
+  });
+
+  it("Should allow admin to update LINK token address", async function () {
+    await expect(lottery.connect(admin).setLinkTokenAddress(linkToken.target))
+      .to.emit(lottery, "LinkTokenAddressUpdated")
+      .withArgs(linkToken.target);
+    expect(await lottery.i_linkToken()).to.equal(linkToken.target);
+  });
+
+  it("Should revert if non-admin tries to set values", async function () {
+    await expect(lottery.connect(participant1).setCallbackGasLimit(600_000)).to.be.revertedWith("Only admin");
+    await expect(lottery.connect(participant1).setNumWords(3)).to.be.revertedWith("Only admin");
+    await expect(lottery.connect(participant1).setKeyHash(ethers.keccak256(ethers.toUtf8Bytes("x")))).to.be.revertedWith("Only admin");
+    await expect(lottery.connect(participant1).setMinConfirmations(5)).to.be.revertedWith("Only admin");
+    await expect(lottery.connect(participant1).setWrapperAddress(mockVRFWrapper.target)).to.be.revertedWith("Only admin");
+    await expect(lottery.connect(participant1).setLinkTokenAddress(linkToken.target)).to.be.revertedWith("Only admin");
+  });
+  it("Should allow admin to withdraw LINK", async function () {
+    // Fund the contract with LINK
+    const linkAmount = ethers.parseEther("10");
+    await linkToken.transfer(lottery.target, linkAmount);
+
+    const adminLinkBalanceBefore = await linkToken.balanceOf(admin.address);
+
+    await expect(lottery.connect(admin).withdrawLink())
+      .to.emit(linkToken, "Transfer")
+      .withArgs(lottery.target, admin.address, linkAmount);
+
+    const adminLinkBalanceAfter = await linkToken.balanceOf(admin.address);
+    expect(adminLinkBalanceAfter - adminLinkBalanceBefore).to.equal(linkAmount);
+  });
+
+  it("Should revert if no LINK balance to withdraw", async function () {
+    await expect(lottery.connect(admin).withdrawLink()).to.be.revertedWith("No LINK to withdraw");
+  });
+
+  it("Should allow admin to withdraw native tokens", async function () {
+    const nativeAmount = ethers.parseEther("2");
+    await admin.sendTransaction({ to: lottery.target, value: nativeAmount });
+
+    const adminNativeBalanceBefore = await ethers.provider.getBalance(admin.address);
+
+    const tx = await lottery.connect(admin).withdrawNative();
+    const receipt = await tx.wait();
+    const gasUsed = receipt.gasUsed * receipt.gasPrice;
+
+    const adminNativeBalanceAfter = await ethers.provider.getBalance(admin.address);
+
+    // Because of gas, allow margin of error
+    expect(adminNativeBalanceAfter).to.be.closeTo(adminNativeBalanceBefore + nativeAmount - gasUsed, ethers.parseEther("0.001"));
+  });
+
+  it("Should revert if no native token to withdraw", async function () {
+    await expect(lottery.connect(admin).withdrawNative()).to.be.revertedWith("No native token to withdraw");
+  });
+
+  it("Should revert if non-admin tries to withdraw", async function () {
+    await expect(lottery.connect(participant1).withdrawLink()).to.be.revertedWith("Only admin");
+    await expect(lottery.connect(participant1).withdrawNative()).to.be.revertedWith("Only admin");
+  });  
 });

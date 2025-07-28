@@ -6,26 +6,7 @@ import "@chainlink/contracts/src/v0.8/vrf/dev/VRFV2PlusWrapperConsumerBase.sol";
 import "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
 import "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
-// extend interface to obtain config from the wrapper
-interface IVRFV2PlusWrapperExtended is IVRFV2PlusWrapper {
-    function getConfig()
-        external
-        view
-        returns (
-            int256 fallbackWeiPerUnitLink,
-            uint32 stalenessSeconds,
-            uint32 fulfillmentFlatFeeNativePPM,
-            uint32 fulfillmentFlatFeeLinkDiscountPPM,
-            uint32 wrapperGasOverhead,
-            uint32 coordinatorGasOverheadNative,
-            uint32 coordinatorGasOverheadLink,
-            uint16 coordinatorGasOverheadPerWord,
-            uint8 wrapperNativePremiumPercentage,
-            uint8 wrapperLinkPremiumPercentage,
-            bytes32 keyHash,
-            uint8 maxNumWords
-        );
-}
+
 contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
     // VRF Wrapper and subscription
     uint32 private s_callbackGasLimit = 3000000;
