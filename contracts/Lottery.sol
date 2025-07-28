@@ -6,7 +6,6 @@ import "@chainlink/contracts/src/v0.8/vrf/dev/VRFV2PlusWrapperConsumerBase.sol";
 import "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
 import "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
-import "hardhat/console.sol";
 contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
     // VRF Wrapper and subscription
     uint32 private s_callbackGasLimit = 3000000;
