@@ -6,6 +6,26 @@ import "@chainlink/contracts/src/v0.8/vrf/dev/VRFV2PlusWrapperConsumerBase.sol";
 import "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
 import "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+// extend interface to obtain config from the wrapper
+interface IVRFV2PlusWrapperExtended is IVRFV2PlusWrapper {
+    function getConfig()
+        external
+        view
+        returns (
+            int256 fallbackWeiPerUnitLink,
+            uint32 stalenessSeconds,
+            uint32 fulfillmentFlatFeeNativePPM,
+            uint32 fulfillmentFlatFeeLinkDiscountPPM,
+            uint32 wrapperGasOverhead,
+            uint32 coordinatorGasOverheadNative,
+            uint32 coordinatorGasOverheadLink,
+            uint16 coordinatorGasOverheadPerWord,
+            uint8 wrapperNativePremiumPercentage,
+            uint8 wrapperLinkPremiumPercentage,
+            bytes32 keyHash,
+            uint8 maxNumWords
+        );
+}
 contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
     // VRF Wrapper and subscription
     uint32 private s_callbackGasLimit = 3000000;
@@ -168,54 +188,7 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
         emit RequestSent(requestId, s_numWords,reqPrice);
     
     }
-    // Depends on the number of requested values that you want sent to the
-    // fulfillRandomWords() function. Test and adjust
-    // this limit based on the network that you select, the size of the request,
-    // and the processing of the callback request in the fulfillRandomWords()
-    // function.
-    // The default is 3, but you can set this higher.
-    // For this example, retrieve 2 random values in one request.
-    // Cannot exceed VRFV2Wrapper.getConfig().maxNumWords.
-    function requestRandomWords(
-        uint32 _callbackGasLimit,
-        uint16 _requestConfirmations,
-        uint32 _numWords,
-        uint256 drawId // Add drawId as a parameter
-    ) external onlyAdmin drawExists(drawId) afterEndDate(drawId) returns (uint256) {
-        require(!draws[drawId].drawCompleted, "Draw already completed");
-        require(draws[drawId].participants.length > 0, "No participants in draw");
-        bytes memory extraArgs = VRFV2PlusClient._argsToBytes(
-            VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
-        );
-        uint256 estimatedCost = i_vrfV2PlusWrapper.calculateRequestPrice(
-        s_callbackGasLimit,
-        s_numWords
-        );
-        // Pay in LINK
-        require(i_linkToken.balanceOf(address(this)) >= estimatedCost, "Insufficient LINK balance");
-           
-        (uint256 requestId, uint256 reqPrice) = requestRandomness(
-            _callbackGasLimit,
-            _requestConfirmations,
-            _numWords,
-            extraArgs
-        );
-        
-        s_requests[requestId] = RequestStatus({
-            paid: reqPrice,
-            randomWords: new uint256[](0),
-            fulfilled: false
-        });
-         // Store the drawId associated with the requestId
-        requestIdToDrawId[requestId] = drawId;
-        draws[drawId].randomnessRequested = true;
-
-        requestIds.push(requestId);
-        lastRequestId = requestId;
-        emit RequestSent(requestId, _numWords, reqPrice);
-        return requestId;
-    }
-
+    
 
     // Callback function for VRF
     function fulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) internal override {
@@ -262,6 +235,23 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
         require(s_requests[requestId].paid > 0, "Request not found");
         RequestStatus memory request = s_requests[requestId];
         return (request.paid, request.fulfilled, request.randomWords);
+    }
+
+    function getEstimatedRequestPrice(bool nativePayment) public view returns (uint256) {
+        // Encode nativePayment flag as required by your wrapper
+        bytes memory extraArgs = VRFV2PlusClient._argsToBytes(
+            VRFV2PlusClient.ExtraArgsV1({nativePayment: nativePayment})
+        );
+
+        // Call calculateRequestPrice with current settings and extraArgs if supported
+        // If your wrapper doesn't accept extraArgs, remove it from call
+        uint256 price = i_vrfV2PlusWrapper.calculateRequestPrice(
+            s_callbackGasLimit,
+            s_numWords
+            // , extraArgs  // Uncomment if your wrapper supports this argument
+        );
+
+        return price;
     }
 
     // Receive function to accept native tokens
