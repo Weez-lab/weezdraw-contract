@@ -11,12 +11,11 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
     uint32 private s_callbackGasLimit = 3000000;
     uint16 private s_requestConfirmations = 3;
     uint32 private s_numWords = 1;
-   
+  
     // LINK token address
-    address private linkTokenAddress;
-
-    // Lottery state
-    address private admin;
+    address private immutable admin;
+    address private immutable linkTokenAddress;
+  
     struct Draw {
         uint256 drawId;
         uint256 endDate;
