@@ -188,7 +188,18 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
         emit RequestSent(requestId, s_numWords,reqPrice);
     
     }
-    
+    function withdrawNative(uint256 amount) external onlyAdmin {
+        require(address(this).balance >= amount, "Insufficient balance");
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        require(success, "Native withdrawal failed");
+    }   
+    function withdrawLink(uint256 amount) external onlyAdmin {
+        uint256 contractBalance = i_linkToken.balanceOf(address(this));
+        require(contractBalance >= amount, "Insufficient LINK balance");
+        bool success = i_linkToken.transfer(msg.sender, amount);
+        require(success, "LINK withdrawal failed");
+    }
+
 
     // Callback function for VRF
     function fulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) internal override {
