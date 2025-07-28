@@ -140,7 +140,7 @@ event RequestSent(uint256 requestId, uint32 numWords, uint256 paid);
         emit RequestSent(requestId, s_numWords);
     
     }
-      // Depends on the number of requested values that you want sent to the
+    // Depends on the number of requested values that you want sent to the
     // fulfillRandomWords() function. Test and adjust
     // this limit based on the network that you select, the size of the request,
     // and the processing of the callback request in the fulfillRandomWords()
@@ -184,8 +184,6 @@ event RequestSent(uint256 requestId, uint32 numWords, uint256 paid);
 
     // Callback function for VRF
     function fulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) internal override {
-        //require(s_requests[requestId].paid > 0, "Request not found");
-
         // Retrieve the drawId associated with the requestId
         uint256 drawId = requestIdToDrawId[_requestId];
         require(!draws[drawId].drawCompleted, "Draw already completed");
