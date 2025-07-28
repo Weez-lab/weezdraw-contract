@@ -109,6 +109,10 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
     // Add a participant to a draw
     function addParticipant(uint256 drawId, address participant) external onlyAdmin drawExists(drawId) beforeEndDate(drawId) {
         require(!draws[drawId].randomnessRequested, "Randomness already requested");
+        require(participant != address(0), "Invalid participant address");
+        for (uint i = 0; i < draws[drawId].participants.length; i++) {
+         require(draws[drawId].participants[i] != participant, "Participant already added");
+        }
         draws[drawId].participants.push(participant);
         emit TicketAdded(drawId, participant);
     }
