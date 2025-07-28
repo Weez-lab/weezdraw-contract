@@ -194,10 +194,11 @@ event RequestSent(uint256 requestId, uint32 numWords, uint256 paid);
         draws[drawId].winner = winner;
         draws[drawId].drawCompleted = true;
         
-       
         RequestStatus storage request = s_requests[_requestId];
         require(request.paid > 0, "request not found");
         request.fulfilled = true;
+        request.randomWords = _randomWords; 
+
         emit WinnerSelected(drawId, winner);
         emit RequestFulfilled(_requestId, _randomWords, s_requests[_requestId].paid);
     }
