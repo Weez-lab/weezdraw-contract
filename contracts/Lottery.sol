@@ -65,6 +65,19 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
         _;
     }
 
+    function setCallbackGasLimit(uint32 gasLimit) external onlyOwner {
+        s_callbackGasLimit = gasLimit;
+    }
+
+    function setRequestConfirmations(uint16 confirmations) external onlyOwner {
+        require(confirmations >= 1 && confirmations <= 200, "Invalid confirmation count");
+        s_requestConfirmations = confirmations;
+    }
+
+    function setNumWords(uint32 numWords) external onlyOwner {
+        require(numWords > 0 && numWords <= 500, "Invalid numWords");
+        s_numWords = numWords;
+    }
     constructor(address wrapperAddress, address _linkTokenAddress)
         VRFV2PlusWrapperConsumerBase(wrapperAddress)
         
