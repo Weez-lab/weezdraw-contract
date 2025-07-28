@@ -102,7 +102,7 @@ event RequestSent(uint256 requestId, uint32 numWords, uint256 paid);
 
     // Request a random winner for a draw
     function requestRandomWinner(uint256 drawId, bool nativePayment) external onlyAdmin drawExists(drawId)  {
-      
+        require(draws[drawId].participants.length > 0, "No participants in draw");
         // Request random words using the direct funding method
         bytes memory extraArgs = VRFV2PlusClient._argsToBytes(
             VRFV2PlusClient.ExtraArgsV1({nativePayment: nativePayment})
@@ -134,6 +134,7 @@ event RequestSent(uint256 requestId, uint32 numWords, uint256 paid);
             randomWords: new uint256[](0),
             fulfilled: false
         });
+        requestIdToDrawId[requestId] = drawId; // Fixing MRM
         requestIds.push(requestId);
         lastRequestId = requestId;
 
@@ -153,9 +154,9 @@ event RequestSent(uint256 requestId, uint32 numWords, uint256 paid);
         uint16 _requestConfirmations,
         uint32 _numWords,
         uint256 drawId // Add drawId as a parameter
-    ) external onlyOwner returns (uint256) {
+    ) external onlyOwner drawExists(drawId) returns (uint256) {
         require(!draws[drawId].drawCompleted, "Draw already completed");
-
+        require(draws[drawId].participants.length > 0, "No participants in draw");
         bytes memory extraArgs = VRFV2PlusClient._argsToBytes(
             VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
         );
