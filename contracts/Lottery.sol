@@ -11,7 +11,6 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
     uint32 private s_callbackGasLimit = 3000000;
     uint16 private s_requestConfirmations = 3;
     uint32 private s_numWords = 1;
-event RequestSent(uint256 requestId, uint32 numWords, uint256 paid);
    
     // LINK token address
     address private linkTokenAddress;
@@ -42,8 +41,8 @@ event RequestSent(uint256 requestId, uint32 numWords, uint256 paid);
     event LotteryDrawCreated(uint256 drawId, uint256 endDate);
     event TicketAdded(uint256 drawId, address participant);
     event WinnerSelected(uint256 drawId, address winner);
-    event RequestSent(uint256 requestId, uint32 numWords);
     event RequestFulfilled(uint256 requestId, uint256[] randomWords, uint256 payment);
+    event RequestSent(uint256 requestId, uint32 numWords, uint256 paid);
 
     // Modifiers
     modifier onlyAdmin() {
@@ -137,7 +136,7 @@ event RequestSent(uint256 requestId, uint32 numWords, uint256 paid);
         requestIds.push(requestId);
         lastRequestId = requestId;
 
-        emit RequestSent(requestId, s_numWords);
+        emit RequestSent(requestId, s_numWords,reqPrice);
     
     }
     // Depends on the number of requested values that you want sent to the
