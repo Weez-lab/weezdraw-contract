@@ -154,10 +154,12 @@ event RequestSent(uint256 requestId, uint32 numWords, uint256 paid);
         uint32 _numWords,
         uint256 drawId // Add drawId as a parameter
     ) external onlyOwner returns (uint256) {
+        require(!draws[drawId].drawCompleted, "Draw already completed");
+
         bytes memory extraArgs = VRFV2PlusClient._argsToBytes(
             VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
         );
-        
+
         (uint256 requestId, uint256 reqPrice) = requestRandomness(
             _callbackGasLimit,
             _requestConfirmations,
@@ -184,9 +186,10 @@ event RequestSent(uint256 requestId, uint32 numWords, uint256 paid);
     function fulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) internal override {
         //require(s_requests[requestId].paid > 0, "Request not found");
 
+        // Retrieve the drawId associated with the requestId
+        uint256 drawId = requestIdToDrawId[_requestId];
+        require(!draws[drawId].drawCompleted, "Draw already completed");
 
-    // Retrieve the drawId associated with the requestId
-    uint256 drawId = requestIdToDrawId[_requestId];
         //require(!draws[drawId].drawCompleted, "Draw already completed");
         uint256 winnerIndex = _randomWords[0] % draws[drawId].participants.length;
         address winner = draws[drawId].participants[winnerIndex];
