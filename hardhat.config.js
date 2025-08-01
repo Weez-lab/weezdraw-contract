@@ -14,7 +14,7 @@ module.exports = {
         },
         viaIR: true // 👈 Enable this
       }}, // 👈 Add this if it's missing
-      { version: "0.8.18" }  // 👈 You can support multiple versions
+      { version: "0.8.19" }  // 👈 You can support multiple versions
     ],
     
   },

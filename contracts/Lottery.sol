@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.6;
+pragma solidity 0.8.19;
 
 
 import "@chainlink/contracts/src/v0.8/vrf/dev/VRFV2PlusWrapperConsumerBase.sol";
@@ -14,7 +14,7 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
     uint32 private s_numWords = 1;
   
     // LINK token address
-    address private immutable admin;
+    address private  admin;
     address private immutable linkTokenAddress;
   
     struct Draw {
@@ -69,7 +69,7 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
     function setCallbackGasLimit(uint32 gasLimit) external onlyOwner {
         s_callbackGasLimit = gasLimit;
     }
-
+ 
     function setRequestConfirmations(uint16 confirmations) external onlyOwner {
         require(confirmations >= 1 && confirmations <= 200, "Invalid confirmation count");
         s_requestConfirmations = confirmations;
@@ -78,6 +78,24 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
     function setNumWords(uint32 numWords) external onlyOwner {
         require(numWords > 0 && numWords <= 500, "Invalid numWords");
         s_numWords = numWords;
+    }
+
+      // @notice Set a new admin address (only callable by owner)
+    function setAdmin(address newAdmin) external onlyOwner {
+        require(newAdmin != address(0), "Invalid address");
+        admin = newAdmin;
+    }
+     // ✅ Getters to support tests
+    function getCallbackGasLimit() external view returns (uint32) {
+        return s_callbackGasLimit;
+    }
+
+    function getMinConfirmations() external view returns (uint16) {
+        return s_requestConfirmations;
+    }
+
+    function getNumWords() external view returns (uint32) {
+        return s_numWords;
     }
     constructor(address wrapperAddress, address _linkTokenAddress)
         VRFV2PlusWrapperConsumerBase(wrapperAddress)
@@ -170,17 +188,7 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
         emit RequestSent(requestId, s_numWords,reqPrice);
     
     }
-    function withdrawNative(uint256 amount) external onlyAdmin {
-        require(address(this).balance >= amount, "Insufficient balance");
-        (bool success, ) = payable(msg.sender).call{value: amount}("");
-        require(success, "Native withdrawal failed");
-    }   
-    function withdrawLink(uint256 amount) external onlyAdmin {
-        uint256 contractBalance = i_linkToken.balanceOf(address(this));
-        require(contractBalance >= amount, "Insufficient LINK balance");
-        bool success = i_linkToken.transfer(msg.sender, amount);
-        require(success, "LINK withdrawal failed");
-    }
+    
 
 
     // Callback function for VRF
@@ -246,7 +254,18 @@ contract Lottery is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
 
         return price;
     }
-
+    function withdrawNative(uint256 amount) external onlyOwner {
+        require(address(this).balance >= amount, "Insufficient balance");
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        require(success, "Native withdrawal failed");
+    }   
+    function withdrawLink(uint256 amount) external onlyOwner {
+        uint256 contractBalance = i_linkToken.balanceOf(address(this));
+        require(contractBalance >= amount, "Insufficient LINK balance");
+        bool success = i_linkToken.transfer(msg.sender, amount);
+        require(success, "LINK withdrawal failed");
+    }
     // Receive function to accept native tokens
     receive() external payable {}
+
 }

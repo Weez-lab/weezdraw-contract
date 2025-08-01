@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // A mock for testing code that relies on VRFCoordinatorV2_5.
-pragma solidity ^0.8.6;
+pragma solidity 0.8.19;
 
 // solhint-disable-next-line no-unused-import
 import {IVRFCoordinatorV2Plus, IVRFSubscriptionV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/interfaces/IVRFCoordinatorV2Plus.sol";
